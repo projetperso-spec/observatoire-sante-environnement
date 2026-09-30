@@ -795,21 +795,23 @@ datatable(t11, rownames = FALSE, options = list(pageLength = 27, dom = "ft", ord
 ::: {.card title="Méthode"}
 Ce tableau de bord est produit par des scripts R reproductibles (dossier `R/`). Toutes les données sont publiques et téléchargées automatiquement ; changer le code commune dans `R/00_config.R` puis relancer `run_all.R` refait l'analyse pour une autre commune d'Île-de-France.
 
+Chaque source renvoie vers la page officielle où les chiffres peuvent être vérifiés.
+
 | Module | Source | Échelle | Millésime |
 |---|---|---|---|
-| Portrait | INSEE, recensement (base infracommunale Population) | IRIS | 2022 |
-| Portrait | INSEE, Filosofi (revenus disponibles) | IRIS | 2021 (dernier publié) |
-| Santé | DREES, accessibilité potentielle localisée aux médecins généralistes | Commune | 2022-2024 |
-| Santé | ORS Île-de-France, L'Institut Paris Région, Ineris : cumuls d'expositions (PRSE3) | Maille 500 m | PRSE3 |
-| Climat, végétalisation | ARB Île-de-France, L'Institut Paris Région : méthode Regreen | Maille 125 m | 2022 |
-| Végétalisation | L'Institut Paris Région : espaces verts ouverts au public | Objet | 2024 |
-| Biodiversité | GBIF ; liste UE des espèces exotiques envahissantes (INBO) | Point | 2010-aujourd'hui |
-| Air intérieur | Annuaire de l'Éducation nationale ; INSEE, base permanente des équipements ; Géorisques (radon) ; code de l'environnement | Établissement, commune | 2025 |
-| Climat et risques | Géorisques (API, WFS BRGM) ; Géoportail de l'Urbanisme (servitude PM1) | Commune, 1/100 000 | En vigueur |
-| PLU | Géoportail de l'Urbanisme (zonage du PLU) | Secteur | PLU approuvé le 20/02/2023 |
-| Permaculture | DGFiP, parcelles des personnes morales ; cadastre Etalab | Parcelle | 2024 |
-| Déchets | ADEME, SINOE (flux de collecte, indicateurs de synthèse) | Intercommunalité | Jusqu'à 2024 |
-| Suivi | Plateforme « Le Croissy d'Après » et site de la ville | Action | 2024 |
+| Portrait | [INSEE, recensement (base infracommunale Population)](https://www.insee.fr/fr/statistiques/8647014){target="_blank"} | IRIS | 2022 |
+| Portrait | [INSEE, Filosofi (revenus disponibles)](https://www.insee.fr/fr/statistiques/8229323){target="_blank"} | IRIS | 2021 (dernier publié) |
+| Santé | [DREES, accessibilité potentielle localisée aux médecins généralistes](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/information/){target="_blank"} ; [carte de l'Observatoire des territoires](https://www.observatoire-des-territoires.gouv.fr/accessibilite-potentielle-localisee-apl-aux-medecins-generalistes){target="_blank"} | Commune | 2022-2024 |
+| Santé | ORS Île-de-France, L'Institut Paris Région, Ineris : cumuls d'expositions (PRSE3), [données pour Croissy](https://geoweb.iau-idf.fr/agsmap1/rest/services/OPENDATA/OpendataIAU4/MapServer/19/query?where=insee%3D78190&outFields=%2A&f=html){target="_blank"} | Maille 500 m | PRSE3 |
+| Climat, végétalisation | ARB Île-de-France, L'Institut Paris Région : [méthode Regreen (Note rapide n° 966)](https://www.institutparisregion.fr/fileadmin/NewEtudes/000pack3/Etude_2865/NR_966_web.pdf){target="_blank"}, [données pour Croissy](https://geoweb.iau-idf.fr/agsmap1/rest/services/OPENDATA/OpendataIAU4/MapServer/15/query?where=insee%3D78190&outFields=%2A&returnGeometry=false&f=html){target="_blank"} ; [carte des îlots de chaleur](https://cartoviz2.institutparisregion.fr/?id_appli=icu){target="_blank"} | Maille 125 m | 2022 |
+| Végétalisation | L'Institut Paris Région : [espaces verts ouverts au public à Croissy](https://geoweb.iau-idf.fr/agsmap1/rest/services/OPENDATA/OpendataIAU4/MapServer/9/query?where=insee%3D78190&outFields=%2A&returnGeometry=false&f=html){target="_blank"} | Objet | 2024 |
+| Biodiversité | [GBIF](https://www.gbif.org){target="_blank"} ; [liste UE des espèces exotiques envahissantes (INBO)](https://www.gbif.org/dataset/79d65658-526c-4c78-9d24-1870d67f8439){target="_blank"} | Point | 2010-aujourd'hui |
+| Air intérieur | [Annuaire de l'Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-annuaire-education/table/?refine.code_commune=78190){target="_blank"} ; [INSEE, base permanente des équipements](https://www.insee.fr/fr/metadonnees/source/serie/s1161){target="_blank"} ; Géorisques (radon) ; code de l'environnement | Établissement, commune | 2025 |
+| Climat et risques | [Géorisques, rapport de la commune](https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2?form-commune=true&codeInsee=78190&city=Croissy-sur-Seine){target="_blank"} (radon, arrêtés CatNat, TRI, argiles, nappes) ; [Géoportail de l'Urbanisme](https://www.geoportail-urbanisme.gouv.fr/map/?lon=2.14&lat=48.88&zoom=14){target="_blank"} (servitude PM1) | Commune, 1/100 000 | En vigueur |
+| PLU | [Géoportail de l'Urbanisme](https://www.geoportail-urbanisme.gouv.fr/map/?lon=2.14&lat=48.88&zoom=14){target="_blank"} (zonage du PLU) | Secteur | PLU approuvé le 20/02/2023 |
+| Permaculture | [DGFiP, parcelles des personnes morales](https://www.data.gouv.fr/datasets/fichiers-des-locaux-et-des-parcelles-des-personnes-morales/){target="_blank"} ; [cadastre Etalab](https://cadastre.data.gouv.fr/map?style=ortho&parcelleId=78190000AN0132){target="_blank"} | Parcelle | 2024 |
+| Déchets | [ADEME, SINOE (flux de collecte, indicateurs de synthèse)](https://data.ademe.fr/datasets/rsqxbwsxhk-ngmmu5fcasf5t){target="_blank"} | Intercommunalité | Jusqu'à 2024 |
+| Suivi | [Plateforme « Le Croissy d'Après »](https://croissydapres.croissy.com/2/1843/les-27-fiches-actions-de-la-ville/contributions){target="_blank"} et [site de la ville](https://www.croissy.com){target="_blank"} | Action | 2024 |
 | Écoute citoyenne | Questionnaire propre (`enquete/`) | Répondant | — |
 
 **Limites connues**
