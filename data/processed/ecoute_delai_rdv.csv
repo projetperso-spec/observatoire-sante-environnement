@@ -1,0 +1,21 @@
+"reponse","quartier","nb"
+"Moins d'une semaine","Centre Ville",2
+"1 à 4 semaines","Centre Ville",1
+"Plus d'un mois","Centre Ville",3
+"Je n'ai pas réussi à en obtenir un","Centre Ville",2
+"Non concerné","Centre Ville",0
+"Moins d'une semaine","Ouest",2
+"1 à 4 semaines","Ouest",4
+"Plus d'un mois","Ouest",0
+"Je n'ai pas réussi à en obtenir un","Ouest",0
+"Non concerné","Ouest",1
+"Moins d'une semaine","Plaine des Courlis",0
+"1 à 4 semaines","Plaine des Courlis",2
+"Plus d'un mois","Plaine des Courlis",3
+"Je n'ai pas réussi à en obtenir un","Plaine des Courlis",2
+"Non concerné","Plaine des Courlis",1
+"Moins d'une semaine","Vieux Croissy",0
+"1 à 4 semaines","Vieux Croissy",3
+"Plus d'un mois","Vieux Croissy",3
+"Je n'ai pas réussi à en obtenir un","Vieux Croissy",1
+"Non concerné","Vieux Croissy",0

@@ -1,0 +1,17 @@
+"reponse","quartier","nb"
+"Oui","Centre Ville",0
+"Plutôt oui","Centre Ville",1
+"Plutôt non","Centre Ville",3
+"Non","Centre Ville",4
+"Oui","Ouest",5
+"Plutôt oui","Ouest",2
+"Plutôt non","Ouest",0
+"Non","Ouest",0
+"Oui","Plaine des Courlis",1
+"Plutôt oui","Plaine des Courlis",3
+"Plutôt non","Plaine des Courlis",2
+"Non","Plaine des Courlis",2
+"Oui","Vieux Croissy",0
+"Plutôt oui","Vieux Croissy",1
+"Plutôt non","Vieux Croissy",3
+"Non","Vieux Croissy",3

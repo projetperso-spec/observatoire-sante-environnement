@@ -1,0 +1,21 @@
+{
+"type": "FeatureCollection",
+"name": "eee_observations",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "species": "Lepomis gibbosus", "year": 2022, "nom_francais": "Perche soleil" }, "geometry": { "type": "Point", "coordinates": [ 2.15097, 48.87161 ] } },
+{ "type": "Feature", "properties": { "species": "Myocastor coypus", "year": 2021, "nom_francais": "Ragondin" }, "geometry": { "type": "Point", "coordinates": [ 2.13604, 48.87835 ] } },
+{ "type": "Feature", "properties": { "species": "Reynoutria japonica", "year": 2021, "nom_francais": "Renouée du Japon" }, "geometry": { "type": "Point", "coordinates": [ 2.11908, 48.87974 ] } },
+{ "type": "Feature", "properties": { "species": "Reynoutria japonica", "year": 2021, "nom_francais": "Renouée du Japon" }, "geometry": { "type": "Point", "coordinates": [ 2.127465, 48.873373 ] } },
+{ "type": "Feature", "properties": { "species": "Reynoutria japonica", "year": 2021, "nom_francais": "Renouée du Japon" }, "geometry": { "type": "Point", "coordinates": [ 2.119904, 48.878889 ] } },
+{ "type": "Feature", "properties": { "species": "Alopochen aegyptiaca", "year": 2020, "nom_francais": "Ouette d'Égypte" }, "geometry": { "type": "Point", "coordinates": [ 2.120977, 48.88126 ] } },
+{ "type": "Feature", "properties": { "species": "Alopochen aegyptiaca", "year": 2020, "nom_francais": "Ouette d'Égypte" }, "geometry": { "type": "Point", "coordinates": [ 2.13604, 48.87835 ] } },
+{ "type": "Feature", "properties": { "species": "Gunnera tinctoria", "year": 2020, "nom_francais": "Gunnéra du Chili" }, "geometry": { "type": "Point", "coordinates": [ 2.142992, 48.883651 ] } },
+{ "type": "Feature", "properties": { "species": "Gunnera tinctoria", "year": 2020, "nom_francais": "Gunnéra du Chili" }, "geometry": { "type": "Point", "coordinates": [ 2.142992, 48.883651 ] } },
+{ "type": "Feature", "properties": { "species": "Myocastor coypus", "year": 2020, "nom_francais": "Ragondin" }, "geometry": { "type": "Point", "coordinates": [ 2.13604, 48.87835 ] } },
+{ "type": "Feature", "properties": { "species": "Myocastor coypus", "year": 2019, "nom_francais": "Ragondin" }, "geometry": { "type": "Point", "coordinates": [ 2.13604, 48.87835 ] } },
+{ "type": "Feature", "properties": { "species": "Lepomis gibbosus", "year": 2019, "nom_francais": "Perche soleil" }, "geometry": { "type": "Point", "coordinates": [ 2.13604, 48.87835 ] } },
+{ "type": "Feature", "properties": { "species": "Myocastor coypus", "year": 2018, "nom_francais": "Ragondin" }, "geometry": { "type": "Point", "coordinates": [ 2.13604, 48.87835 ] } },
+{ "type": "Feature", "properties": { "species": "Heracleum mantegazzianum", "year": 2015, "nom_francais": "Berce du Caucase" }, "geometry": { "type": "Point", "coordinates": [ 2.13914, 48.87078 ] } }
+]
+}

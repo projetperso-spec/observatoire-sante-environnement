@@ -1,0 +1,828 @@
+---
+title: "Observatoire santé-environnement"
+author: "Croissy-sur-Seine · projet personnel"
+format:
+  dashboard:
+    theme: cosmo
+    css: styles.css
+    scrolling: true   # hauteurs fixes en pixels : les graphiques restent lisibles sur un écran de portable
+    embed-resources: true   # un seul fichier HTML autonome, publiable tel quel (GitHub Pages, pièce jointe)
+lang: fr
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: preparation
+suppressPackageStartupMessages({ library(sf); library(leaflet); library(plotly); library(DT) })
+source("R/00_config.R")
+lire <- function(f, ...) utils::read.csv(file.path(DOSSIER_TRAITE, f), encoding = "UTF-8", check.names = FALSE, ...)
+geo  <- function(f) sf::st_read(file.path(DOSSIER_TRAITE, f), quiet = TRUE)
+
+# Palette validée (skill dataviz) : 3 échelles de comparaison + une rampe séquentielle bleue.
+COUL_ECHELLE <- c(Commune = "#2a78d6", "Département" = "#eb6834", France = "#1baf7a")
+RAMPE <- c("#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b")
+VERT_EV <- "#008300"; ORANGE <- "#eb6834"
+INK <- "#0b0b0b"; INK2 <- "#52514e"; GRILLE <- "#e1e0d9"
+
+portrait <- lire("portrait.csv", colClasses = c(code_iris = "character"))
+iris <- geo("iris.geojson")
+quartiers <- portrait[portrait$echelle == "IRIS", ]
+commune <- portrait[portrait$echelle == "Commune", ]
+france <- portrait[portrait$echelle == "France", ]
+apl <- lire("apl_medecins.csv")
+climat <- lire("climat_vegetalisation.csv", colClasses = c(code_iris = "character"))
+climat <- merge(climat, quartiers[, c("code_iris", "nom_iris")], by = "code_iris")
+bio <- lire("biodiversite_synthese.csv")
+especes <- lire("especes.csv")
+eee <- especes[especes$envahissante_ue, ]
+prse <- lire("prse3_classes_commune.csv")
+ecoute_meta <- lire("ecoute_meta.csv")
+
+fmt <- function(x, d = 1) formatC(x, format = "f", digits = d, big.mark = " ", decimal.mark = ",")
+an_apl <- max(apl$annee)
+apl_c <- apl[apl$annee == an_apl & apl$echelle == NOM_COMMUNE, ]
+apl_f <- apl[apl$annee == an_apl & apl$echelle == "France", ]
+apl_c0 <- apl[apl$annee == min(apl$annee) & apl$echelle == NOM_COMMUNE, ]
+q_80 <- quartiers[which.max(quartiers$part_80_ans_plus), ]
+q_pauv <- quartiers[which.max(quartiers$taux_pauvrete), ]
+
+# Fond de carte : Plan IGN (Géoplateforme, sans clé d'API), atténué pour laisser ressortir les données.
+fond_ign <- function(m) {
+  addTiles(m, urlTemplate = paste0(
+    "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0",
+    "&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png",
+    "&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"),
+    attribution = "Fond : Plan IGN, Géoplateforme", options = tileOptions(opacity = 0.55, maxZoom = 19))
+}
+
+# Mise en forme sobre des graphiques plotly : grille discrète, police système, pas de barre d'outils.
+style_plotly <- function(p, titre_y = NULL) {
+  p |>
+    layout(font = list(family = "system-ui, -apple-system, 'Segoe UI', sans-serif", color = INK2, size = 13),
+           paper_bgcolor = "rgba(0,0,0,0)", plot_bgcolor = "rgba(0,0,0,0)",
+           xaxis = list(gridcolor = GRILLE, zeroline = FALSE, linecolor = "#c3c2b7", title = ""),
+           yaxis = list(gridcolor = GRILLE, zeroline = FALSE, linecolor = "#c3c2b7", title = if (is.null(titre_y)) "" else titre_y),
+           margin = list(l = 10, r = 10, t = 10, b = 10), hoverlabel = list(font = list(size = 13))) |>
+    config(displayModeBar = FALSE)
+}
+
+# Carte des quartiers colorés selon un indicateur (rampe séquentielle, légende explicite).
+carte_iris <- function(valeur, titre, unite = " %") {
+  d <- merge(iris, quartiers[, c("code_iris", valeur)], by = "code_iris")
+  d$v <- d[[valeur]]
+  d <- d[order(d$code_iris), ]
+  d$num <- seq_len(nrow(d))
+  pal <- colorNumeric(RAMPE[2:6], domain = d$v)
+  leaflet(d) |>
+    fond_ign() |>
+    addPolygons(fillColor = ~pal(v), fillOpacity = 0.8, color = "#ffffff", weight = 2,
+                label = ~sprintf("%s : %s%s", nom_iris, fmt(v, if (unite == " %") 1 else 0), unite),
+                highlightOptions = highlightOptions(weight = 3, color = INK, bringToFront = TRUE)) |>
+    # Les quartiers sont trop petits pour y écrire nom et valeur sans chevauchement :
+    # un numéro sur la carte, le détail dans l'encadré.
+    addLabelOnlyMarkers(data = suppressWarnings(sf::st_point_on_surface(d)), label = ~as.character(num),
+                        labelOptions = labelOptions(noHide = TRUE, direction = "center",
+                                                    className = "pastille-quartier")) |>
+    addControl(htmltools::HTML(paste0(
+      "<div class='cle-quartiers'>",
+      paste(sprintf("<div><span class='pastille-quartier'>%d</span> %s : <b>%s%s</b></div>",
+                    d$num, d$nom_iris, fmt(d$v, if (unite == " %") 1 else 0), unite), collapse = ""),
+      "</div>")), position = "bottomleft") |>
+    addLegend("bottomright", pal = pal, values = ~v, title = titre, opacity = 0.8,
+              labFormat = labelFormat(suffix = unite, big.mark = " "))
+}
+```
+
+# À retenir
+
+## Row {height=200px}
+
+```{r}
+#| content: valuebox
+#| title: !expr 'sprintf("Consultations de généraliste par habitant (France : %s)", fmt(apl_f$apl_medecins_moins_65_ans, 2))'
+list(icon = "heart-pulse", color = "warning", value = fmt(apl_c$apl_medecins_moins_65_ans, 2))
+```
+
+```{r}
+#| content: valuebox
+#| title: !expr 'sprintf("80 ans ou plus, %s (commune : %s %%)", q_80$nom_iris, fmt(commune$part_80_ans_plus))'
+list(icon = "people", color = "light", value = sprintf("%s %%", fmt(q_80$part_80_ans_plus)))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Espèces envahissantes de la liste UE"
+list(icon = "flower1", color = "light", value = nrow(eee))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Habitants peu exposés aux pollutions (PRSE3)"
+list(icon = "wind", color = "light", value = sprintf("%s %%", fmt(sum(prse$part_pop_score_env[prse$classe <= 2]), 0)))
+```
+
+## Row {height=640px}
+
+### Column {width=60%}
+
+::: {.card title="Ce que montre le diagnostic"}
+
+**1. L'accès aux médecins généralistes est l'enjeu de santé le plus net.**
+En `r an_apl`, un habitant de `r NOM_COMMUNE` a accès à `r fmt(apl_c$apl_medecins_moins_65_ans, 2)` consultations par an auprès de médecins de 65 ans ou moins, contre `r fmt(apl_f$apl_medecins_moins_65_ans, 2)` en moyenne en France, soit deux fois moins. L'indicateur baisse chaque année depuis `r min(apl$annee)` (`r fmt(apl_c0$apl_medecins_moins_65_ans, 2)`).
+
+**2. Le vieillissement se concentre dans le Vieux Croissy.**
+`r fmt(q_80$part_80_ans_plus)` % de ses habitants ont 80 ans ou plus, deux fois la moyenne communale. Ce sont les personnes les plus fragiles en cas de canicule : un registre des personnes isolées et des lieux frais accessibles à pied y sont prioritaires.
+
+**3. Le Centre Ville est le quartier à végétaliser en premier.**
+Il dispose de `r fmt(climat$m2_espace_vert_public_par_hab[climat$nom_iris == "Centre Ville"])` m² d'espace vert public par habitant et c'est le quartier où la part de mailles cumulant au moins deux enjeux de renaturation est la plus forte (`r fmt(climat$part_mailles_2_enjeux_ou_plus[climat$nom_iris == "Centre Ville"])` %, méthode Regreen). Il compte aussi `r fmt(quartiers$part_65_ans_plus[quartiers$nom_iris == "Centre Ville"])` % de 65 ans ou plus.
+
+**4. La Plaine des Courlis concentre la fragilité sociale.**
+Taux de pauvreté de `r fmt(q_pauv$taux_pauvrete, 0)` %, le plus élevé de la commune, et la plus forte part de jeunes enfants (`r fmt(q_pauv$part_0_2_ans)` % de 0-2 ans). C'est le quartier où les actions doivent aller chercher les habitants plutôt qu'attendre qu'ils viennent.
+
+**5. L'exposition cumulée aux pollutions reste faible.**
+Selon le score de l'ORS Île-de-France (PRSE3), toute la population vit dans les deux classes d'exposition les plus basses sur six. Les priorités sont donc l'accès aux soins, la chaleur et la végétalisation, plus que la dépollution.
+
+**6. Six espèces exotiques envahissantes réglementées ont été observées**, dont la renouée du Japon (inscrite sur la liste européenne en 2025) et la berce du Caucase, toxique au contact.
+
+**7. La Plaine des Courlis cumule risque d'inondation et fragilité sociale.**
+`r fmt(lire("risques_iris.csv")$part_ppri[lire("risques_iris.csv")$nom_iris == "Plaine des Courlis"], 0)` % de sa surface est dans l'enveloppe du plan de prévention des inondations de la Seine. C'est là que l'information préventive et les plans de mise en sûreté comptent le plus.
+
+**8. Le futur PLU vert peut cibler quelques secteurs précis.** Les mailles prioritaires pour la renaturation se concentrent dans les secteurs d'activités et de commerce, le centre-ville et les équipements publics du PLU approuvé en 2023 (page « PLU et permaculture »).
+:::
+
+### Column {width=40%}
+
+```{r}
+#| title: "Les quatre quartiers (IRIS) de la commune"
+carte_iris("population", "Habitants (2022)", unite = "")
+```
+
+# Portrait
+
+## Row {height=500px}
+
+### Column {.tabset}
+
+```{r}
+#| title: "80 ans ou plus"
+carte_iris("part_80_ans_plus", "Part des 80 ans ou plus")
+```
+
+```{r}
+#| title: "Taux de pauvreté"
+carte_iris("taux_pauvrete", "Taux de pauvreté (2021)")
+```
+
+```{r}
+#| title: "Moins de 15 ans"
+carte_iris("part_0_14_ans", "Part des moins de 15 ans")
+```
+
+```{r}
+#| title: "Revenu médian"
+carte_iris("revenu_median", "Revenu disponible médian (€/UC)", unite = " €")
+```
+
+## Row {height=620px}
+
+```{r}
+#| title: "Indicateurs par quartier, comparés à la commune, au département et à la France"
+tab <- portrait[, c("nom_iris", "population", "part_0_2_ans", "part_0_14_ans", "part_65_ans_plus",
+                    "part_80_ans_plus", "part_cadres", "part_employes_ouvriers", "revenu_median", "taux_pauvrete")]
+names(tab) <- c("Territoire", "Habitants", "0-2 ans (%)", "0-14 ans (%)", "65 ans + (%)", "80 ans + (%)",
+                "Cadres (%)", "Employés et ouvriers (%)", "Revenu médian (€/UC)", "Pauvreté (%)")
+datatable(tab, rownames = FALSE, options = list(dom = "t", ordering = FALSE, pageLength = 10),
+          caption = "Sources : INSEE, recensement 2022 (âges, catégories sociales) ; Filosofi 2021 (revenus, dernier millésime publié par IRIS). Revenus non comparés hors IRIS : Filosofi IRIS ne fournit pas ces échelons.") |>
+  formatRound(2, digits = 0, mark = " ") |> formatRound(3:8, digits = 1, dec.mark = ",") |>
+  formatRound(9, digits = 0, mark = " ")
+```
+
+# Végétalisation
+
+## Row {height=580px}
+
+### Column {width=65% .tabset}
+
+```{r}
+#| label: regreen
+grille <- geo("regreen_grille.geojson")
+ev <- geo("espaces_verts.geojson")
+carte_regreen <- function(col, titre, seuil) {
+  pal <- colorFactor(rev(RAMPE), domain = 0:7)  # score bas = enjeu fort = bleu foncé
+  leaflet(grille) |>
+    fond_ign() |>
+    addPolygons(fillColor = ~pal(get(col)), fillOpacity = 0.75, color = "#ffffff", weight = 0.5,
+                label = ~sprintf("Score %s : %d%s", titre, get(col), ifelse(get(col) <= seuil, " (zone prioritaire)", ""))) |>
+    addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+    addPolygons(data = ev, fillColor = VERT_EV, fillOpacity = 0.55, color = VERT_EV, weight = 1,
+                label = ~sprintf("%s (%s ha)", nom, fmt(surface_cartographiee_ha, 2)), group = "Espaces verts publics") |>
+    addLegend("bottomright", colors = pal(0:7), labels = 0:7, opacity = 0.75,
+              title = sprintf("Score %s<br><small>bas = enjeu fort<br>prioritaire si ≤ %d</small>", titre, seuil)) |>
+    addLegend("bottomleft", colors = VERT_EV, labels = "Espace vert public", opacity = 0.55) |>
+    addLayersControl(overlayGroups = "Espaces verts publics", options = layersControlOptions(collapsed = TRUE))
+}
+```
+
+```{r}
+#| title: "Adaptation au changement climatique"
+carte_regreen("score_cc", "climat", 2)
+```
+
+```{r}
+#| title: "Santé et cadre de vie"
+carte_regreen("score_scv", "santé", 2)
+```
+
+```{r}
+#| title: "Reconquête de la biodiversité"
+carte_regreen("score_biodiv", "biodiversité", 1)
+```
+
+### Column {width=35%}
+
+::: {.card title="Comment lire ces cartes"}
+Chaque carré de 125 m reçoit un score par la méthode **Regreen** de l'Agence régionale de la biodiversité (ARB Île-de-France) et de L'Institut Paris Région.
+
+**Plus le score est bas, plus il est utile de renaturer** (bleu foncé). La méthode retient comme zones prioritaires les scores de 0 à 1 pour la biodiversité et de 0 à 2 pour le climat et la santé.
+
+- *Climat* : inondation, ruissellement, îlot de chaleur.
+- *Santé et cadre de vie* : manque d'espaces verts, pollution de l'air, vulnérabilité à la chaleur.
+- *Biodiversité* : surface et couverture végétales, habitats rares.
+
+Le quartier Ouest n'a aucun espace vert public recensé mais aucune maille prioritaire : les deux mesures ne disent pas la même chose (espaces ouverts au public d'un côté, couverture végétale et risques de l'autre).
+:::
+
+## Row {height=420px}
+
+```{r}
+#| title: "Par quartier : enjeux de renaturation et espaces verts publics"
+t2 <- climat[, c("nom_iris", "nb_mailles", "part_mailles_prio_climat", "part_mailles_prio_sante",
+                 "part_mailles_prio_biodiv", "part_mailles_2_enjeux_ou_plus",
+                 "surface_espace_vert_public_ha", "m2_espace_vert_public_par_hab")]
+names(t2) <- c("Quartier", "Mailles", "Prioritaires climat (%)", "Prioritaires santé (%)",
+               "Prioritaires biodiversité (%)", "2 enjeux ou plus (%)", "Espace vert public (ha)", "m² par habitant")
+datatable(t2, rownames = FALSE, options = list(dom = "t", ordering = FALSE),
+          caption = "Sources : ARB ÎdF / L'Institut Paris Région (Regreen) ; L'Institut Paris Région, espaces verts ouverts au public 2024 (espaces d'au moins 1 000 m², surface mesurée sur la carte). Un parc sert aussi les quartiers voisins : le m² par habitant compare les quartiers, il ne mesure pas l'accès réel.") |>
+  formatRound(3:8, digits = 1, dec.mark = ",")
+```
+
+# Santé et air
+
+## Row {height=470px}
+
+### Column {width=55%}
+
+```{r}
+#| title: "Accès aux médecins généralistes de 65 ans ou moins (APL)"
+d <- apl
+d$serie <- ifelse(d$echelle == NOM_COMMUNE, "Commune", ifelse(grepl("^Département", d$echelle), "Département", "France"))
+d$annee <- factor(d$annee)
+p <- plot_ly()
+for (s in names(COUL_ECHELLE)) {  # ordre fixe : commune, département, France
+  x <- d[d$serie == s, ]
+  p <- add_trace(p, data = x, x = ~annee, y = ~apl_medecins_moins_65_ans, type = "bar",
+                 name = x$echelle[1], marker = list(color = COUL_ECHELLE[[s]], line = list(color = "#fcfcfb", width = 2)),
+                 text = fmt(x$apl_medecins_moins_65_ans, 2), textposition = "outside",
+                 textfont = list(color = INK, size = 12), cliponaxis = FALSE,
+                 hovertemplate = paste0(x$echelle[1], " · %{x} : %{y:.2f} consultations<extra></extra>"))
+}
+style_plotly(p, "Consultations / an / habitant") |>
+  layout(barmode = "group", bargap = 0.25, bargroupgap = 0.08,
+         yaxis = list(range = c(0, max(d$apl_medecins_moins_65_ans) * 1.18)),
+         legend = list(orientation = "h", x = 0, y = 1.12, yanchor = "bottom"),
+         margin = list(t = 40))
+```
+
+### Column {width=45%}
+
+::: {.card title="Lecture"}
+L'**APL** (accessibilité potentielle localisée) de la DREES compte les consultations de médecin généraliste accessibles par an et par habitant, en tenant compte des médecins des communes voisines et de l'âge de la population.
+
+La DREES met en avant l'indicateur limité aux **médecins de 65 ans ou moins**, car les plus âgés risquent de partir à la retraite. Moyenne France `r an_apl` : `r fmt(apl_f$apl_medecins_moins_65_ans, 2)` (calculée ici à partir du fichier DREES, pondérée par la population ; la DREES publie 3,3 pour 2023, ce que ce calcul retrouve).
+
+**Pistes d'action pour la commune** : aide à l'installation (locaux, logement des internes), maison ou centre de santé, accueil de médecins salariés, lien avec la CPTS du territoire.
+:::
+
+## Row {height=470px}
+
+### Column {width=55%}
+
+```{r}
+#| title: "Cumul d'expositions environnementales (score ORS Île-de-France, maille de 500 m)"
+pg <- geo("prse3_grille.geojson")
+pal <- colorNumeric(RAMPE[2:6], domain = pg$sco_env)
+leaflet(pg) |>
+  fond_ign() |>
+  addPolygons(fillColor = ~pal(sco_env), fillOpacity = 0.7, color = "#ffffff", weight = 1,
+              label = ~sprintf("Score environnement : %s / 100 (classe %d sur 6)", fmt(sco_env), cl_env)) |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addLegend("bottomright", pal = pal, values = ~sco_env, title = "Score / 100<br><small>haut = exposé</small>", opacity = 0.7)
+```
+
+### Column {width=45%}
+
+```{r}
+#| title: "Part de la population par classe d'exposition (1 = la plus faible)"
+pr <- prse[prse$part_pop_score_env > 0 | prse$part_pop_score_env_vuln > 0, ]
+p <- plot_ly(pr, y = ~paste("Classe", classe), x = ~part_pop_score_env, type = "bar", orientation = "h",
+             name = "Score environnement", marker = list(color = COUL_ECHELLE[["Commune"]]),
+             text = ~paste0(fmt(part_pop_score_env), " %"), textposition = "outside",
+             hovertemplate = "Environnement · %{y} : %{x:.1f} %<extra></extra>") |>
+  add_trace(x = ~part_pop_score_env_vuln, name = "Score environnement et vulnérabilité",
+            marker = list(color = COUL_ECHELLE[["Département"]]), text = ~paste0(fmt(part_pop_score_env_vuln), " %"),
+            hovertemplate = "Environnement et vulnérabilité · %{y} : %{x:.1f} %<extra></extra>")
+style_plotly(p) |> layout(barmode = "group", bargap = 0.3, xaxis = list(range = c(0, 115), ticksuffix = " %"),
+                          yaxis = list(autorange = "reversed"), legend = list(orientation = "h", y = -0.2))
+```
+
+## Row {height=640px}
+
+### Column {width=50%}
+
+```{r}
+#| title: "Air intérieur : établissements scolaires soumis à la surveillance"
+ecoles <- lire("etablissements_scolaires.csv")
+equip <- lire("equipements_air_interieur.csv")
+radon <- readLines(file.path(DOSSIER_TRAITE, "radon.txt"))
+coul_statut <- c(Public = COUL_ECHELLE[["Commune"]], "Privé" = COUL_ECHELLE[["Département"]])
+leaflet(ecoles) |>
+  fond_ign() |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addCircleMarkers(lng = ~longitude, lat = ~latitude, radius = 8, color = "#fcfcfb", weight = 2,
+                   fillColor = ~unname(coul_statut[statut]), fillOpacity = 0.95,
+                   label = ~sprintf("%s (%s, %s)", nom, tolower(type), tolower(statut))) |>
+  addLegend("bottomright", colors = unname(coul_statut), labels = names(coul_statut), opacity = 0.95,
+            title = "Établissement")
+```
+
+### Column {width=50%}
+
+::: {.card title="« Mesurons, Agissons, Respirons » : ce que la loi impose"}
+Le code de l'environnement (art. R221-30 et suivants, modifiés par le décret n° 2022-1689) impose une **surveillance de la qualité de l'air intérieur** dans les établissements qui accueillent des enfants : crèches, accueils de loisirs, écoles, collèges et lycées. Elle comprend :
+
+- une **évaluation annuelle des moyens d'aération**, avec une mesure du dioxyde de carbone (CO₂) à lecture directe ;
+- un **autodiagnostic** de la qualité de l'air intérieur au moins tous les quatre ans ;
+- des **campagnes de mesure des polluants**, réalisées par un organisme accrédité (art. R221-31).
+
+```{r}
+#| output: asis
+n <- function(code) sum(equip$nombre[equip$code %in% code])
+cat(sprintf("**Établissements concernés à %s** (INSEE, base permanente des équipements %s) : %d crèches et micro-crèches, %d accueils de loisirs sans hébergement, %d écoles. L'annuaire de l'Éducation nationale recense en outre %d collège ou lycée.\n\n",
+            NOM_COMMUNE, max(equip$annee), n(c("D502", "D509")), n("D505"), n(c("C107", "C108", "C109")),
+            sum(ecoles$type %in% c("Collège", "Lycée"))))
+cat(sprintf("**Radon** : la commune est en catégorie %s sur 3 (Géorisques) : %s.\n",
+            radon, if (radon == "1") "potentiel faible ; les mesures obligatoires dans les établissements visent d'abord les communes en catégorie 3" else "vérifier les obligations de mesure dans les établissements recevant du public"))
+```
+:::
+
+## Row {height=420px}
+
+::: {.card title="Proposition : trame du rapport sur la qualité de l'air intérieur"}
+1. **État des lieux** : liste des établissements concernés, gestionnaire (commune, département, région, privé), date des dernières évaluations.
+2. **Aération** : un capteur de CO₂ par salle de classe et de sieste, relevés pendant une semaine type en hiver, consignes d'ouverture des fenêtres affichées.
+3. **Autodiagnostic** : grille nationale remplie avec les agents d'entretien (produits ménagers, mobilier neuf, travaux).
+4. **Mesures des polluants** : calendrier des campagnes par organisme accrédité, à caler sur les travaux prévus (action 13 du « Croissy d'Après »).
+5. **Air extérieur** : exposition des établissements (score PRSE3 ci-dessus), épisodes de pollution, lien avec Airparif.
+6. **Plan d'actions et sensibilisation** : ateliers pour les familles et les agents, restitution au conseil local « Une seule santé ».
+:::
+
+# Climat et risques
+
+```{r}
+#| label: risques
+risques <- lire("risques_synthese.csv")
+risques_iris <- lire("risques_iris.csv")
+catnat <- lire("catnat.csv")
+ppri <- geo("ppri.geojson"); argiles <- geo("argiles.geojson"); nappes <- geo("nappes.geojson")
+val <- function(motif) risques$valeur[grepl(motif, risques$indicateur)]
+surface <- as.numeric(val("Surface de la commune"))
+```
+
+## Row {height=560px}
+
+### Column {width=62% .tabset}
+
+```{r}
+#| title: "Inondation (plan de prévention)"
+leaflet(ppri) |>
+  fond_ign() |>
+  addPolygons(fillColor = COUL_ECHELLE[["Commune"]], fillOpacity = 0.45, color = COUL_ECHELLE[["Commune"]], weight = 1,
+              label = "Enveloppe des zones réglementaires du PPRI") |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addLegend("bottomright", colors = COUL_ECHELLE[["Commune"]], labels = "Enveloppe du PPRI (servitude PM1)", opacity = 0.45)
+```
+
+```{r}
+#| title: "Retrait-gonflement des argiles"
+coul_arg <- c(Faible = RAMPE[2], Moyenne = RAMPE[4], Forte = RAMPE[6])
+leaflet(argiles) |>
+  fond_ign() |>
+  addPolygons(fillColor = ~unname(coul_arg[exposition]), fillOpacity = 0.6, color = "#ffffff", weight = 1,
+              label = ~paste("Exposition", tolower(exposition))) |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addLegend("bottomright", colors = unname(coul_arg[unique(argiles$exposition)]),
+            labels = paste("Exposition", tolower(unique(argiles$exposition))), opacity = 0.6)
+```
+
+```{r}
+#| title: "Remontées de nappe"
+nappes$type <- ifelse(grepl("débordements", nappes$classe), "Débordement de nappe possible",
+               ifelse(grepl("cave", nappes$classe), "Inondation de cave possible", "Ni l'un ni l'autre"))
+coul_nap <- c("Débordement de nappe possible" = RAMPE[6], "Inondation de cave possible" = RAMPE[3], "Ni l'un ni l'autre" = "#e1e0d9")
+leaflet(nappes) |>
+  fond_ign() |>
+  addPolygons(fillColor = ~unname(coul_nap[type]), fillOpacity = 0.55, color = "#ffffff", weight = 0.5, label = ~type) |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addLegend("bottomright", colors = unname(coul_nap), labels = names(coul_nap), opacity = 0.55)
+```
+
+### Column {width=38%}
+
+::: {.card title="Ce qu'il faut retenir"}
+```{r}
+#| output: asis
+cat(sprintf("- **Inondation** : %s ha, soit %s %% de la commune, sont dans l'enveloppe du plan de prévention des risques d'inondation de la Seine. La commune fait partie du territoire à risque important d'inondation de la métropole francilienne.\n",
+            fmt(as.numeric(val("PPRI")), 0), fmt(100 * as.numeric(val("PPRI")) / surface, 0)))
+cat(sprintf("- **Argiles** : %s ha (%s %% de la commune) en exposition moyenne au retrait-gonflement, qui fissure les maisons lors des sécheresses.\n",
+            fmt(as.numeric(val("argiles")), 0), fmt(100 * as.numeric(val("argiles")) / surface, 0)))
+cat(sprintf("- **Catastrophes naturelles** : %s arrêtés, le dernier pour les crues de %s.\n",
+            val("catastrophe"), substr(catnat$debut[1], 7, 10)))
+cat(sprintf("- **Le quartier le plus exposé** : %s, avec %s %% de sa surface dans l'enveloppe du PPRI. C'est aussi le quartier au taux de pauvreté le plus élevé.\n",
+            risques_iris$nom_iris[which.max(risques_iris$part_ppri)], fmt(max(risques_iris$part_ppri), 0)))
+```
+
+**Projections climatiques** : l'outil Climadiag Commune de Météo-France donne pour chaque commune l'évolution attendue des vagues de chaleur et des sécheresses. Il n'offre pas d'accès automatisé ; ses chiffres sont à reporter à la main dans le diagnostic.
+:::
+
+## Row {height=470px}
+
+### Column {width=60%}
+
+```{r}
+#| title: "Part de chaque quartier concernée (%)"
+t6 <- risques_iris[, c("nom_iris", "part_ppri", "part_argiles_moyenne_forte", "part_nappe_debordement", "part_nappe_caves")]
+names(t6) <- c("Quartier", "Enveloppe PPRI", "Argiles (exposition moyenne ou forte)", "Débordement de nappe possible", "Inondation de cave possible")
+datatable(t6, rownames = FALSE, options = list(dom = "t", ordering = FALSE),
+          caption = "Sources : Géoportail de l'Urbanisme (servitude PM1, DDT des Yvelines) ; Géorisques / BRGM (argiles, remontées de nappe : carte au 1/100 000, indicative à l'échelle d'un quartier).") |>
+  formatRound(2:5, digits = 1, dec.mark = ",")
+```
+
+### Column {width=40%}
+
+```{r}
+#| title: "Arrêtés de catastrophe naturelle"
+datatable(setNames(catnat[, c("debut", "fin", "risque")], c("Début", "Fin", "Risque")),
+          rownames = FALSE, options = list(dom = "t", ordering = FALSE), caption = "Source : Géorisques (base GASPAR).")
+```
+
+# Biodiversité
+
+## Row {height=460px}
+
+### Column {width=45%}
+
+```{r}
+#| title: !expr sprintf("Espèces observées depuis 2010 (%d espèces, %s observations)", sum(bio$nb_especes), fmt(sum(bio$nb_observations), 0))
+b <- bio[order(bio$nb_especes), ]
+p <- plot_ly(b, y = ~factor(groupe, levels = groupe), x = ~nb_especes, type = "bar", orientation = "h",
+             marker = list(color = COUL_ECHELLE[["Commune"]]), text = ~nb_especes, textposition = "outside",
+             customdata = ~nb_observations,
+             hovertemplate = "%{y} : %{x} espèces, %{customdata} observations<extra></extra>")
+style_plotly(p) |> layout(xaxis = list(title = "Nombre d'espèces", range = c(0, max(b$nb_especes) * 1.15)),
+                          showlegend = FALSE)
+```
+
+### Column {width=55%}
+
+```{r}
+#| title: "Observations d'espèces envahissantes réglementées (liste UE)"
+pts <- geo("eee_observations.geojson")
+leaflet(pts) |>
+  fond_ign() |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addCircleMarkers(radius = 7, color = "#fcfcfb", weight = 2, fillColor = ORANGE, fillOpacity = 0.9,
+                   label = ~sprintf("%s (%s), %d", nom_francais, species, year)) |>
+  addLegend("bottomright", colors = ORANGE, labels = "Observation d'une espèce de la liste UE", opacity = 0.9)
+```
+
+## Row {height=520px}
+
+```{r}
+#| title: "Espèces de la liste européenne observées sur la commune"
+t4 <- eee[, c("nom_francais", "species", "groupe", "nb_observations", "derniere_annee", "inscription_liste_ue")]
+names(t4) <- c("Espèce", "Nom scientifique", "Groupe", "Observations", "Dernière observation", "Inscrite sur la liste UE depuis")
+datatable(t4, rownames = FALSE, options = list(dom = "t", ordering = FALSE),
+          caption = "Sources : GBIF (observations depuis 2010) ; liste des espèces exotiques envahissantes préoccupantes pour l'Union (règlement UE 1143/2014), publiée par l'INBO sur GBIF. Les observations reflètent l'effort des observateurs : les oiseaux, très suivis, sont surreprésentés, et l'absence d'observation ne prouve pas l'absence d'une espèce.")
+```
+
+# PLU et permaculture
+
+```{r}
+#| label: plu
+plu <- geo("plu_secteurs.geojson")
+date_plu <- as.Date(readLines(file.path(DOSSIER_TRAITE, "plu_date.txt")))
+perma <- geo("permaculture_candidats.geojson")
+```
+
+## Row {height=660px}
+
+### Column {width=60%}
+
+```{r}
+#| title: !expr 'sprintf("PLU en vigueur (approuvé le %s) : part des mailles prioritaires pour la renaturation", format(date_plu, "%d/%m/%Y"))'
+pal <- colorNumeric(RAMPE[1:6], domain = c(0, 100), na.color = "#f0efec")
+leaflet(plu) |>
+  fond_ign() |>
+  addPolygons(fillColor = ~pal(part_mailles_prioritaires), fillOpacity = 0.7, color = "#ffffff", weight = 1,
+              label = ~sprintf("%s (%s) : %s %% de mailles prioritaires", libelle, libelong,
+                               ifelse(is.na(part_mailles_prioritaires), "sans maille", fmt(part_mailles_prioritaires, 0)))) |>
+  addLegend("bottomright", pal = pal, values = c(0, 100), title = "Mailles prioritaires<br><small>au moins un enjeu Regreen</small>",
+            labFormat = labelFormat(suffix = " %"), opacity = 0.7)
+```
+
+### Column {width=40%}
+
+::: {.card title="Vers un PLU vert (action 11)"}
+```{r}
+#| output: asis
+p <- sf::st_drop_geometry(plu)
+p <- p[!is.na(p$part_mailles_prioritaires) & p$part_mailles_prioritaires > 0, ]
+p <- p[order(-p$part_mailles_prioritaires), ]
+cat("Les besoins de renaturation se concentrent dans ces secteurs du PLU :\n\n")
+cat(sprintf("- **%s** (%s) : %s %% de mailles prioritaires, %s ha\n", p$libelle, p$libelong,
+            fmt(p$part_mailles_prioritaires, 0), fmt(p$surface_ha, 1)), sep = "")
+```
+
+**Leviers possibles dans le règlement** : coefficient de pleine terre ou de biotope renforcé dans ces secteurs, végétalisation des aires de stationnement, protection des arbres existants (action 7), désimperméabilisation des espaces publics (action 25). Le secteur UBb, « issu des anciennes occupations maraîchères », rappelle l'histoire agricole de la commune.
+:::
+
+## Row {height=680px}
+
+### Column {width=50%}
+
+```{r}
+#| title: "Terrains communaux présélectionnés pour un jardin en permaculture"
+coul_score <- colorFactor(RAMPE[c(1, 2, 4, 5, 7)], domain = 0:4)  # score entier : légende en classes, pas en dégradé
+leaflet(perma) |>
+  fond_ign() |>
+  addPolygons(data = iris, fill = FALSE, color = INK, weight = 2, label = ~nom_iris) |>
+  addPolygons(fillColor = ~coul_score(score), fillOpacity = 0.85, color = INK, weight = 1.5,
+              label = ~sprintf("n° %d · %s · %s m² non bâtis · score %d / 4", rang, adresse, fmt(surface_cultivable_m2, 0), score)) |>
+  addLabelOnlyMarkers(data = suppressWarnings(sf::st_point_on_surface(perma)), label = ~as.character(rang),
+                      labelOptions = labelOptions(noHide = TRUE, direction = "center", className = "pastille-quartier")) |>
+  addLegend("bottomright", pal = coul_score, values = 0:4, title = "Score (0 à 4)", opacity = 0.85)
+```
+
+### Column {width=50%}
+
+```{r}
+#| title: "Classement et critères"
+t9 <- sf::st_drop_geometry(perma)[, c("rang", "adresse", "quartier", "secteur_plu", "surface_cultivable_m2", "natures", "score")]
+names(t9) <- c("N°", "Adresse", "Quartier", "Secteur PLU", "Surface non bâtie (m²)", "Nature au cadastre", "Score / 4")
+datatable(t9, rownames = FALSE, options = list(dom = "t", ordering = FALSE),
+          caption = "Terrains appartenant à la commune (DGFiP, fichier des parcelles des personnes morales 2024) ayant au moins 300 m² en terre, jardin, pré, lande ou terrain d'agrément. Un point par critère : au moins 1 000 m² ; quartier au taux de pauvreté supérieur à la médiane communale ; maille prioritaire « santé et cadre de vie » (Regreen) ; hors enveloppe du PPRI. Présélection à vérifier sur place (usage actuel, sol, soleil, eau).") |>
+  formatRound(5, digits = 0, mark = " ")
+```
+
+# Déchets
+
+```{r}
+#| label: dechets
+dech <- lire("dechets.csv")
+an_d <- max(dech$annee)
+```
+
+## Row {height=500px}
+
+### Column {width=60%}
+
+```{r}
+#| title: !expr 'sprintf("Kilos par habitant en %d : %s et collectivités comparables", an_d, dech$territoire[1])'
+d <- dech[dech$annee == an_d & dech$flux != "Total déchets ménagers et assimilés", ]
+d$flux <- factor(d$flux, levels = d$flux)  # axe inversé plus bas : flux dans l'ordre, territoire au-dessus de la médiane
+p <- plot_ly(d, y = ~flux, x = ~kg_hab_territoire, type = "bar", orientation = "h", name = d$territoire[1],
+             marker = list(color = COUL_ECHELLE[["Commune"]]), text = ~fmt(kg_hab_territoire, 0), textposition = "outside",
+             hovertemplate = "%{y} : %{x:.1f} kg/hab<extra></extra>") |>
+  add_trace(x = ~kg_hab_mediane_typologie, name = sprintf("Médiane des collectivités « %s »", d$typologie[1]),
+            marker = list(color = COUL_ECHELLE[["Département"]]), text = ~fmt(kg_hab_mediane_typologie, 0),
+            hovertemplate = "%{y} : %{x:.1f} kg/hab (médiane)<extra></extra>")
+style_plotly(p) |> layout(barmode = "group", bargap = 0.25, yaxis = list(autorange = "reversed"),
+                          xaxis = list(title = "kg par habitant et par an", range = c(0, max(d$kg_hab_territoire, d$kg_hab_mediane_typologie) * 1.15)),
+                          legend = list(orientation = "h", x = 0, y = 1.08, yanchor = "bottom"), margin = list(t = 40))
+```
+
+### Column {width=40%}
+
+::: {.card title="Lecture et pistes pour les biodéchets (action 17)"}
+```{r}
+#| output: asis
+omr <- dech[dech$annee == an_d & grepl("résiduelles", dech$flux), ]
+bio <- dech[dech$annee == an_d & grepl("Biodéchets", dech$flux), ]
+cat(sprintf("En %d, les habitants de l'intercommunalité (%s) produisent **%s kg d'ordures ménagères résiduelles** par an, contre %s kg pour la médiane des collectivités « %s ». La collecte séparée des biodéchets et déchets verts atteint %s kg, contre %s kg : les déchets verts des jardins pèsent sans doute lourd dans ce chiffre.\n\n",
+            an_d, dech$territoire[1], fmt(omr$kg_hab_territoire, 0), fmt(omr$kg_hab_mediane_typologie, 0), omr$typologie,
+            fmt(bio$kg_hab_territoire, 0), fmt(bio$kg_hab_mediane_typologie, 0)))
+```
+Ces chiffres couvrent toute l'intercommunalité, qui exerce la compétence de collecte, et non la seule commune.
+
+**Pistes pour étendre l'expérimentation** : depuis 2024, les collectivités doivent proposer à chaque habitant une solution de tri à la source de ses biodéchets (loi anti-gaspillage). Composteurs partagés au pied des immeubles de la Plaine des Courlis et du Centre Ville, composteurs individuels pour les maisons, lien avec le jardin en permaculture pour valoriser le compost.
+:::
+
+## Row {height=420px}
+
+```{r}
+#| title: "Ordures ménagères résiduelles par habitant, année par année"
+d <- dech[grepl("résiduelles", dech$flux), ]
+d$annee <- factor(d$annee)
+p <- plot_ly(d, x = ~annee, y = ~kg_hab_territoire, type = "bar", name = d$territoire[1],
+             marker = list(color = COUL_ECHELLE[["Commune"]]), hovertemplate = "%{x} : %{y:.0f} kg/hab<extra></extra>") |>
+  add_trace(y = ~kg_hab_mediane_typologie, name = "Médiane des collectivités comparables",
+            marker = list(color = COUL_ECHELLE[["Département"]]), hovertemplate = "%{x} : %{y:.0f} kg/hab (médiane)<extra></extra>")
+style_plotly(p, "kg / habitant / an") |> layout(barmode = "group", bargap = 0.2,
+                                                   legend = list(orientation = "h", x = 0, y = 1.08, yanchor = "bottom"), margin = list(t = 40))
+```
+
+# Une seule santé
+
+## Row {height=140px}
+
+::: {.card title="Le conseil local « Une seule santé » (action 18 du « Croissy d'Après »)"}
+L'approche « Une seule santé » (One Health) part d'un constat simple : la santé des habitants, celle des animaux et celle des milieux sont liées. Le tableau ci-dessous propose des sujets pour les premières séances du conseil local, chacun appuyé sur une donnée de la commune.
+:::
+
+## Row {height=900px}
+
+```{r}
+#| title: "Sujets locaux où santé humaine, animale et environnementale se rejoignent"
+n_ragondin <- sum(especes$nb_observations[especes$species == "Myocastor coypus"])
+berce <- especes[especes$species == "Heracleum mantegazzianum", ]
+une_sante <- data.frame(
+  Sujet = c("Leptospirose", "Moustique tigre", "Berce du Caucase", "Chaleur et personnes âgées", "Air intérieur des écoles", "Accès aux soins"),
+  `Le lien` = c(
+    "Bactérie transmise à l'humain par l'urine de rongeurs, dont le ragondin, dans l'eau douce et la terre humide (baignade, pêche, canoë).",
+    "Moustique qui pond dans les eaux stagnantes ; vecteur possible de la dengue, du chikungunya et du zika.",
+    "Plante exotique envahissante dont la sève provoque des brûlures graves au soleil.",
+    "Les îlots de chaleur urbains aggravent le risque pour les plus âgés et les plus isolés.",
+    "L'aération des salles conditionne l'exposition des enfants aux polluants de l'air intérieur.",
+    "Moins de médecins, c'est moins de prévention et un repérage plus tardif des maladies liées à l'environnement."),
+  `Donnée locale` = c(
+    sprintf("%d observations de ragondin sur la commune depuis 2010 (GBIF), en bord de Seine.", n_ragondin),
+    "Le Vésinet, commune voisine, est colonisé depuis 2024 (ARS Île-de-France) ; statut de Croissy à vérifier auprès de l'ARS.",
+    sprintf("Observée sur la commune (dernière observation : %d, GBIF).", berce$derniere_annee[1]),
+    sprintf("%s %% de 80 ans ou plus dans le %s.", fmt(q_80$part_80_ans_plus), q_80$nom_iris),
+    sprintf("%d établissements scolaires et %d crèches soumis à la surveillance.", nrow(ecoles), n(c("D502", "D509"))),
+    sprintf("%s consultations de généraliste par habitant, contre %s en France.", fmt(apl_c$apl_medecins_moins_65_ans, 2), fmt(apl_f$apl_medecins_moins_65_ans, 2))),
+  `Action possible` = c(
+    "Informer pêcheurs, clubs nautiques et agents des berges ; gants et bottes pour l'entretien des bords de Seine.",
+    "Couvrir les récupérateurs d'eau de pluie de l'action 6 d'une moustiquaire ; signaler sur le portail national.",
+    "Arrachage par des agents équipés (gants, manches longues) ; ne pas l'inclure dans les chantiers bénévoles.",
+    "Registre des personnes isolées, visites l'été, îlots de fraîcheur de l'action 5 dans le Vieux Croissy.",
+    "Capteurs de CO₂ dans les classes et restitution aux parents (action 15).",
+    "Associer le conseil à la recherche de médecins (maison de santé, CPTS)."),
+  Source = c("Santé publique France ; ministère de la Santé", "ARS Île-de-France ; ministère de la Santé",
+             "Agences régionales de santé", "INSEE ; Regreen", "Code de l'environnement ; Éducation nationale ; INSEE", "DREES"),
+  check.names = FALSE)
+datatable(une_sante, rownames = FALSE, options = list(dom = "t", ordering = FALSE, pageLength = 10))
+```
+
+# Écoute
+
+```{r}
+#| label: ecoute
+themes <- lire("ecoute_themes.csv")
+verb <- lire("ecoute_verbatims.csv")
+lieu <- lire("ecoute_lieu_frais.csv")
+part <- lire("ecoute_participation.csv")
+exemple <- ecoute_meta$source != "reelles"
+```
+
+```{r}
+#| output: asis
+if (exemple) cat('::: {.callout-warning}\n## Données de démonstration\nCes', ecoute_meta$nb_reponses, 'réponses sont **fictives** : elles servent seulement à tester la chaîne d\'analyse. Déposer les vraies réponses dans `enquete/reponses.csv` puis relancer `run_all.R`. Questionnaire : `enquete/questionnaire.md`.\n:::\n')
+```
+
+## Row {height=440px}
+
+### Column {width=50%}
+
+```{r}
+#| title: "Thèmes évoqués dans les réponses libres (% des répondants)"
+t <- themes[order(themes$part), ]
+p <- plot_ly(t, y = ~factor(theme, levels = theme), x = ~part, type = "bar", orientation = "h",
+             marker = list(color = COUL_ECHELLE[["Commune"]]), text = ~paste0(fmt(part, 0), " %"), textposition = "outside",
+             customdata = ~nb_repondants, hovertemplate = "%{y} : %{customdata} répondants (%{x:.0f} %)<extra></extra>")
+style_plotly(p) |> layout(xaxis = list(range = c(0, max(t$part) * 1.2), ticksuffix = " %"), showlegend = FALSE)
+```
+
+### Column {width=50%}
+
+```{r}
+#| title: "Volontaires par type d'action"
+pp <- part[order(part$nb), ]
+p <- plot_ly(pp, y = ~factor(action, levels = action), x = ~nb, type = "bar", orientation = "h",
+             marker = list(color = VERT_EV), text = ~nb, textposition = "outside",
+             hovertemplate = "%{y} : %{x} personnes<extra></extra>")
+style_plotly(p) |> layout(xaxis = list(title = "Personnes prêtes à participer", range = c(0, max(pp$nb) * 1.2)),
+                          showlegend = FALSE)
+```
+
+## Row {height=470px}
+
+### Column {width=60%}
+
+```{r}
+#| title: "Citations par thème"
+datatable(setNames(verb[, c("theme", "quartier", "age", "citation")], c("Thème", "Quartier", "Âge", "Citation")),
+          rownames = FALSE, options = list(pageLength = 6, dom = "tp", ordering = FALSE))
+```
+
+### Column {width=40%}
+
+```{r}
+#| title: "« En cas de forte chaleur, trouvez-vous un endroit frais près de chez vous ? »"
+l <- stats::aggregate(nb ~ reponse, data = lieu, FUN = sum)
+l$reponse <- factor(l$reponse, levels = c("Oui", "Plutôt oui", "Plutôt non", "Non"))
+l <- l[order(l$reponse), ]
+p <- plot_ly(l, x = ~reponse, y = ~nb, type = "bar", marker = list(color = c(RAMPE[5], RAMPE[3], "#e66767", "#d03b3b")),  # bleu = favorable, rouge = défavorable
+             text = ~nb, textposition = "outside", hovertemplate = "%{x} : %{y} répondants<extra></extra>")
+style_plotly(p, "Répondants") |> layout(showlegend = FALSE, yaxis = list(range = c(0, max(l$nb) * 1.25)))
+```
+
+# Suivi
+
+```{r}
+#| label: suivi
+actions <- utils::read.csv("suivi/actions_croissy_dapres.csv", encoding = "UTF-8", check.names = FALSE)
+connues <- !grepl("à compléter", actions$intitule)  # l'action 18 est attestée mais son intitulé exact manque
+reliees <- nzchar(actions$module_observatoire)
+```
+
+## Row {height=170px}
+
+```{r}
+#| content: valuebox
+#| title: "Actions du « Croissy d'Après »"
+list(icon = "list-check", color = "light", value = nrow(actions))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Intitulés exacts relevés sur la plateforme de la ville"
+list(icon = "check2-square", color = "light", value = sum(connues))
+```
+
+```{r}
+#| content: valuebox
+#| title: "Actions éclairées par un module de l'observatoire"
+list(icon = "diagram-3", color = "light", value = sum(reliees))
+```
+
+## Row {height=2000px}
+
+```{r}
+#| title: "Tableau de suivi des actions (à tenir à jour avec les services et les élus référents)"
+t11 <- actions[, c("numero", "intitule", "module_observatoire", "indicateur_propose", "statut", "elu_referent", "echeance")]
+names(t11) <- c("N°", "Action", "Module de l'observatoire", "Indicateur proposé", "Statut", "Élu référent", "Échéance")
+datatable(t11, rownames = FALSE, options = list(pageLength = 27, dom = "ft", ordering = FALSE,
+                                                language = list(search = "Rechercher :", zeroRecords = "Aucune action trouvée")),
+          caption = "Intitulés relevés sur la plateforme croissydapres.croissy.com (18 actions) et sur la page « Les projets structurants » (action 18). Les autres intitulés n'ont pas pu être relevés automatiquement et restent à compléter. Statut, élu et échéance sont à renseigner dans suivi/actions_croissy_dapres.csv.")
+```
+
+# Méthode
+
+::: {.card title="Méthode"}
+Ce tableau de bord est produit par des scripts R reproductibles (dossier `R/`). Toutes les données sont publiques et téléchargées automatiquement ; changer le code commune dans `R/00_config.R` puis relancer `run_all.R` refait l'analyse pour une autre commune d'Île-de-France.
+
+| Module | Source | Échelle | Millésime |
+|---|---|---|---|
+| Portrait | INSEE, recensement (base infracommunale Population) | IRIS | 2022 |
+| Portrait | INSEE, Filosofi (revenus disponibles) | IRIS | 2021 (dernier publié) |
+| Santé | DREES, accessibilité potentielle localisée aux médecins généralistes | Commune | 2022-2024 |
+| Santé | ORS Île-de-France, L'Institut Paris Région, Ineris : cumuls d'expositions (PRSE3) | Maille 500 m | PRSE3 |
+| Climat, végétalisation | ARB Île-de-France, L'Institut Paris Région : méthode Regreen | Maille 125 m | 2022 |
+| Végétalisation | L'Institut Paris Région : espaces verts ouverts au public | Objet | 2024 |
+| Biodiversité | GBIF ; liste UE des espèces exotiques envahissantes (INBO) | Point | 2010-aujourd'hui |
+| Air intérieur | Annuaire de l'Éducation nationale ; INSEE, base permanente des équipements ; Géorisques (radon) ; code de l'environnement | Établissement, commune | 2025 |
+| Climat et risques | Géorisques (API, WFS BRGM) ; Géoportail de l'Urbanisme (servitude PM1) | Commune, 1/100 000 | En vigueur |
+| PLU | Géoportail de l'Urbanisme (zonage du PLU) | Secteur | PLU approuvé le 20/02/2023 |
+| Permaculture | DGFiP, parcelles des personnes morales ; cadastre Etalab | Parcelle | 2024 |
+| Déchets | ADEME, SINOE (flux de collecte, indicateurs de synthèse) | Intercommunalité | Jusqu'à 2024 |
+| Suivi | Plateforme « Le Croissy d'Après » et site de la ville | Action | 2024 |
+| Écoute citoyenne | Questionnaire propre (`enquete/`) | Répondant | — |
+
+**Limites connues**
+
+- *Qualité de l'air* : les cartes de concentrations annuelles d'Airparif (NO₂, PM2,5) n'ont pas pu être intégrées, le service de téléchargement d'Airparif renvoyant une erreur au moment de la réalisation. L'air est couvert indirectement par le score PRSE3 et le critère PM2,5 de Regreen.
+- *Revenus* : Filosofi n'est plus produit par IRIS après 2021 (arrêt du millésime 2022 par l'INSEE).
+- *Biodiversité* : les observations dépendent de l'effort des observateurs ; elles ne constituent pas un inventaire.
+- *Espaces verts* : l'inventaire ne compte que les espaces publics d'au moins 1 000 m² ; les jardins privés et les squares plus petits n'y figurent pas.
+- *Écoute citoyenne* : tant que `enquete/reponses.csv` n'existe pas, la page affiche un jeu de réponses fictif.
+- *Projections climatiques* : Climadiag Commune (Météo-France) n'offre pas d'accès automatisé ; ses chiffres sont à reporter à la main.
+- *Remontées de nappe et argiles* : cartes au 1/100 000, indicatives à l'échelle d'un quartier, jamais à celle d'une parcelle.
+- *Déchets* : chiffres de l'intercommunalité, qui exerce la compétence de collecte, et non de la seule commune.
+- *Permaculture* : présélection sur données ; la nature « terre » ou « jardin » vient du cadastre fiscal et peut ne pas refléter l'usage actuel.
+- *Suivi du « Croissy d'Après »* : 9 intitulés sur 27 n'ont pas pu être relevés ; aucun statut d'avancement n'est inventé.
+- *Moustique tigre* : aucune source officielle consultée ne précise le statut de Croissy ; seule la colonisation du Vésinet voisin est attestée.
+:::

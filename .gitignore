@@ -1,0 +1,18 @@
+# Téléchargements bruts (volumineux, retéléchargés par les scripts)
+data/raw/
+
+# Fichiers générés par Quarto et R
+tableau-de-bord_files/
+note/*_files/
+.quarto/
+.Rhistory
+.RData
+.Rproj.user/
+
+# Sorties de rendu : la version publiée est dans docs/ (copiée par run_all.R)
+/tableau-de-bord.html
+note/note-dgs.html
+note/note-dgs.docx
+
+# Fichiers temporaires de Word
+~$*

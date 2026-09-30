@@ -1,0 +1,49 @@
+/* Numéro de quartier sur les cartes et dans l'encadré qui les explique. */
+.pastille-quartier {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  border-radius: 50%;
+  background: #0b0b0b;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+/* Leaflet impose son propre style aux étiquettes : on le remplace. */
+.leaflet-tooltip.pastille-quartier {
+  padding: 0 !important;
+  border: 0 !important;
+  background: #0b0b0b !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  box-shadow: 0 0 0 2px #ffffff !important;
+}
+.leaflet-tooltip.pastille-quartier::before { display: none; }
+
+.cle-quartiers {
+  background: rgba(255, 255, 255, 0.92);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #0b0b0b;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.cle-quartiers .pastille-quartier { width: 18px; height: 18px; line-height: 18px; font-size: 11px; margin-right: 4px; }
+
+/* Barre de navigation : 12 pages sur une seule ligne dès 1200 px de large. */
+@media (min-width: 992px) {
+  .navbar .nav-link { white-space: nowrap; font-size: 0.86rem; padding-left: 0.45rem !important; padding-right: 0.45rem !important; }
+  .navbar-brand .navbar-title { font-size: 1.05rem; white-space: nowrap; }
+  .navbar .navbar-subtitle, .navbar .navbar-author { display: none; }
+}
+
+/* Un nombre ne se coupe jamais sur deux lignes (colonnes numériques des tableaux DT). */
+table.dataTable td.dt-right { white-space: nowrap; }
+
+/* Titres de cartes longs : retour à la ligne propre plutôt que débordement. */
+.card-header { white-space: normal; line-height: 1.3; }
+.bslib-value-box .value-box-title { white-space: normal; line-height: 1.25; }

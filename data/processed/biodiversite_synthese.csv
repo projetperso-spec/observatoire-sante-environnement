@@ -1,0 +1,11 @@
+"groupe","nb_especes","nb_observations","nb_introduites_griis","nb_envahissantes_ue"
+"Oiseaux",110,4259,7,1
+"Plantes",255,741,57,3
+"Insectes",41,61,2,0
+"Poissons",19,50,5,1
+"Mammifères",4,10,1,1
+"Mollusques",3,6,1,0
+"Araignées et autres arthropodes",2,3,0,0
+"Amphibiens et reptiles",1,1,0,0
+"Autres",1,1,0,0
+"Champignons",1,1,0,0

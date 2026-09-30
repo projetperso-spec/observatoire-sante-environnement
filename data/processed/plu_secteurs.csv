@@ -1,0 +1,21 @@
+"libelle","libelong","typezone","surface_ha","mailles","part_mailles_prioritaires","score_sante_moyen","score_climat_moyen"
+"UBa","Secteur UBa : habitat individuel issu d'opérations d'ensemble","U",113.9,79,0,3.5,4.6
+"Na","Secteur Na : secteur destiné à protéger les terrains ou sites frappés d'une protection de la nappe aquifère","N",51.1,31,0,4.8,5.8
+"Ns","Secteur Ns : secteur de confortation du domaine public fluvial (La Seine)","N",42.2,22,22.7,4.3,4.3
+"UBe","Secteur UBe : constructions sur grands parcellaires","U",21.4,13,0,3.8,5.1
+"UVb","Secteur UVb : secteur des grands sites de parcs et jardins à usage privatif","U",20.9,13,0,4.2,4.8
+"UBc","Secteur UBc : habitat collectif de type « résidences »","U",15.2,7,0,3.3,4.3
+"UE","Secteur UE : zone de confortation des équipements publics et collectifs","U",15,12,16.7,4.2,4.7
+"UVa","Secteur UVa : secteur des équipements et espaces vert publics et collectifs","U",13.4,10,0,4.7,4.9
+"UAa","Secteur UAa : centre-ville","U",10,5,20,3.2,4.2
+"N","Secteur N : zone naturelle à protéger","N",8.4,8,0,4.6,6.2
+"ULa","Secteur ULa : secteur des activités industrielles, tertiaires et de services","U",7.6,6,33.3,4.5,3
+"UBb","Secteur UBb : tissu urbain issu des anciennes occupations maraichères","U",6.3,3,0,3,4.3
+"ULb","Secteur ULb : secteur de consolidation et d'évolution des sites récents de l'activité","U",5,3,100,2.7,3
+"Nd","Secteur Nd : secteur des espaces naturels et paysagers à vocation de parcs et jardins collectifs","N",3.3,1,0,4,6
+"UAc","Secteur UAc : abords du centre-ville","U",2.4,2,0,3,4.5
+"UAb","Secteur UAb : centre historique","U",2,1,0,4,4
+"UBd","Secteur UBd : habitat individuel groupé (type maisons de ville) sur petits parcellaires","U",1.5,NA,NA,NA,NA
+"ULc","Secteur ULc : secteur dédié aux activités commerciales","U",1.4,1,100,2,3
+"ULd","Secteur ULd : secteur de consolidation des activités dans le tissu urbain constitué","U",1.4,1,0,3,5
+"UAa1","Secteur UAa1 : centre-ville, comprenant un sous-secteur UAa1","U",0.2,NA,NA,NA,NA

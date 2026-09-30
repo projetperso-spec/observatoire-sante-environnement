@@ -1,0 +1,6 @@
+"rang","id","adresse","quartier","secteur_plu","surface_cultivable_m2","natures","dans_ppri","maille_prioritaire_sante","score"
+1,"78190000AN0132","9001 CHE DE RONDE","Plaine des Courlis","UVa",88147,"Terre",FALSE,FALSE,3
+2,"78190000AP0080","LES TERRES DU VESINET","Plaine des Courlis","UE",6468,"Terre",FALSE,FALSE,3
+3,"78190000AL0964","RUE DE LA PRAIRIE","Plaine des Courlis","Nd",2935,"Terrains d'agrément",FALSE,FALSE,3
+4,"78190000AH0170","PL JEAN CHANORIER","Vieux Croissy","Nd",2998,"Jardins",FALSE,FALSE,2
+5,"78190000AI0197","LES DROCOURTES","Vieux Croissy","UE",624,"Jardins",FALSE,FALSE,1

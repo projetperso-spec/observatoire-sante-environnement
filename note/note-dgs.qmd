@@ -1,0 +1,100 @@
+---
+title: "Note à l'attention de Madame la Directrice générale des services"
+subtitle: "Diagnostic santé-environnement de Croissy-sur-Seine : premiers enseignements et propositions"
+lang: fr
+format:
+  docx:
+    toc: false
+    number-sections: false
+  html:
+    embed-resources: true
+    theme: cosmo
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: false
+knitr::opts_knit$set(root.dir = "..")
+```
+
+```{r}
+#| include: false
+source("R/00_config.R")
+lire <- function(f, ...) utils::read.csv(file.path(DOSSIER_TRAITE, f), encoding = "UTF-8", check.names = FALSE, ...)
+fmt <- function(x, d = 1) formatC(x, format = "f", digits = d, big.mark = " ", decimal.mark = ",")
+
+portrait <- lire("portrait.csv", colClasses = c(code_iris = "character"))
+q <- portrait[portrait$echelle == "IRIS", ]
+com <- portrait[portrait$echelle == "Commune", ]
+apl <- lire("apl_medecins.csv"); an <- max(apl$annee)
+apl_c <- apl$apl_medecins_moins_65_ans[apl$annee == an & apl$echelle == NOM_COMMUNE]
+apl_f <- apl$apl_medecins_moins_65_ans[apl$annee == an & apl$echelle == "France"]
+apl_c0 <- apl$apl_medecins_moins_65_ans[apl$annee == min(apl$annee) & apl$echelle == NOM_COMMUNE]
+climat <- merge(lire("climat_vegetalisation.csv", colClasses = c(code_iris = "character")), q[, c("code_iris", "nom_iris")])
+risques <- lire("risques_iris.csv"); rs <- lire("risques_synthese.csv")
+val <- function(m) rs$valeur[grepl(m, rs$indicateur)]
+especes <- lire("especes.csv"); eee <- especes[especes$envahissante_ue, ]
+dech <- lire("dechets.csv"); an_d <- max(dech$annee)
+omr <- dech[dech$annee == an_d & grepl("résiduelles", dech$flux), ]
+equip <- lire("equipements_air_interieur.csv"); ecoles <- lire("etablissements_scolaires.csv")
+perma <- lire("permaculture_candidats.csv")
+prse <- lire("prse3_classes_commune.csv")
+v80 <- q[which.max(q$part_80_ans_plus), ]; pdc <- q[q$nom_iris == "Plaine des Courlis", ]
+cv <- climat[climat$nom_iris == "Centre Ville", ]
+```
+
+::: {custom-style="Subtitle"}
+Exercice personnel réalisé à partir de données publiques, dans le cadre d'une candidature. Ce document n'émane pas de la commune.
+:::
+
+**Objet** : premiers enseignements du diagnostic santé-environnement et propositions d'actions rattachées au « Croissy d'Après ».
+
+**Pièce jointe** : tableau de bord interactif (observatoire santé-environnement), qui détaille chaque indicateur par quartier.
+
+## 1. Contexte et méthode
+
+Plusieurs actions du « Croissy d'Après » supposent un diagnostic préalable : îlots de fraîcheur « après l'élaboration d'un diagnostic de vulnérabilité » (action 5), plan arbres (7), PLU vert (11), qualité de l'air (15), biodéchets (17), conseil local « Une seule santé » (18). Ce diagnostic rassemble les données publiques disponibles à l'échelle des quatre quartiers statistiques de la commune (IRIS) : recensement et revenus (INSEE), accès aux soins (DREES), expositions environnementales (ORS Île-de-France), renaturation (ARB Île-de-France), risques (Géorisques), zonage du PLU, déchets (ADEME) et biodiversité (GBIF). Toutes les analyses sont reproductibles et peuvent être mises à jour chaque année.
+
+## 2. Cinq constats
+
+**L'accès aux médecins généralistes est l'enjeu de santé le plus net.** En `r an`, un habitant a accès à `r fmt(apl_c, 2)` consultations par an de médecins de 65 ans ou moins, contre `r fmt(apl_f, 2)` en moyenne nationale, soit deux fois moins. L'indicateur recule chaque année depuis `r min(apl$annee)` (`r fmt(apl_c0, 2)`).
+
+**Le vieillissement se concentre dans le Vieux Croissy**, où `r fmt(v80$part_80_ans_plus)` % des habitants ont 80 ans ou plus, contre `r fmt(com$part_80_ans_plus)` % pour la commune. Ce sont les personnes les plus fragiles lors des canicules.
+
+**La Plaine des Courlis cumule fragilité sociale et risque d'inondation** : taux de pauvreté de `r fmt(pdc$taux_pauvrete, 0)` %, le plus élevé de la commune, et `r fmt(risques$part_ppri[risques$nom_iris == "Plaine des Courlis"], 0)` % de sa surface dans l'enveloppe du plan de prévention des risques d'inondation de la Seine. À l'échelle communale, `r fmt(as.numeric(val("PPRI")), 0)` ha sont concernés et la moitié de la commune est exposée au retrait-gonflement des argiles.
+
+**Le Centre Ville est le quartier à végétaliser en premier** : `r fmt(cv$m2_espace_vert_public_par_hab)` m² d'espace vert public par habitant, et la plus forte part de secteurs cumulant plusieurs enjeux de renaturation (`r fmt(cv$part_mailles_2_enjeux_ou_plus)` %). Au PLU, les besoins se concentrent dans les secteurs d'activités et de commerce, le centre-ville et les équipements publics.
+
+**L'exposition cumulée aux pollutions reste faible** (toute la population dans les deux classes les plus basses sur six du score régional), ce qui permet de concentrer les moyens sur les soins, la chaleur et la végétalisation. En revanche, `r nrow(eee)` espèces exotiques envahissantes réglementées par l'Union européenne ont été observées, dont la renouée du Japon et la berce du Caucase, dont la sève provoque des brûlures.
+
+## 3. Propositions d'actions
+
+| Proposition | Quartier ciblé | Action du « Croissy d'Après » | Échéance proposée |
+|---|---|---|---|
+| Registre des personnes isolées et visites estivales ; premiers îlots de fraîcheur accessibles à pied | Vieux Croissy | 5 | Avant l'été prochain |
+| Plan de végétalisation : plantations et désimperméabilisation dans les secteurs prioritaires | Centre Ville | 7, 25 | Programmation pluriannuelle |
+| Coefficient de pleine terre renforcé dans les secteurs du PLU où se concentrent les besoins | Secteurs d'activités, centre-ville | 11 | Prochaine évolution du PLU |
+| Capteurs de CO₂ et évaluation annuelle de l'aération dans les `r nrow(ecoles)` établissements scolaires et `r sum(equip$nombre[equip$code %in% c("D502", "D509")])` crèches | Toute la commune | 15 | Année scolaire en cours |
+| Extension de la collecte des biodéchets : composteurs partagés en habitat collectif | Plaine des Courlis, Centre Ville | 17 | Selon l'intercommunalité |
+| Jardin partagé en permaculture : visite des `r nrow(perma)` terrains communaux présélectionnés | Plaine des Courlis en priorité | Hors plan (mission du poste) | Visites dans le trimestre |
+| Aide à l'installation de médecins : locaux, lien avec la CPTS, maison de santé | Toute la commune | Hors plan (mission du poste) ; sujet pour le conseil « Une seule santé » (18) | À instruire |
+| Arrachage des espèces envahissantes par des agents équipés, information des riverains et des pêcheurs | Bords de Seine | 4 | Saison de végétation |
+
+Les ordures ménagères résiduelles de l'intercommunalité (`r fmt(omr$kg_hab_territoire, 0)` kg par habitant en `r an_d`) sont déjà sous la médiane des collectivités comparables (`r fmt(omr$kg_hab_mediane_typologie, 0)` kg) : l'enjeu des biodéchets porte d'abord sur la généralisation du tri à la source, obligatoire depuis 2024.
+
+## 4. Points de vigilance
+
+- **Qualité de l'air extérieur** : les cartes annuelles d'Airparif n'ont pas pu être intégrées (service indisponible) ; à compléter avec Airparif.
+- **Projections climatiques** : à reprendre de l'outil Climadiag Commune de Météo-France.
+- **Écoute des habitants** : un questionnaire est prêt ; les résultats présentés dans le tableau de bord sont fictifs tant qu'il n'a pas été diffusé.
+- **Données par quartier** : les risques naturels sont cartographiés au 1/100 000 et restent indicatifs à cette échelle ; les déchets sont suivis à l'échelle intercommunale.
+- **Suivi du « Croissy d'Après »** : 9 intitulés d'actions sur 27 restent à compléter avec les services.
+
+## 5. Prochaines étapes proposées
+
+1. **Mois 1** : validation du diagnostic avec les services (urbanisme, techniques, CCAS, écoles) et les élus référents ; diffusion du questionnaire aux habitants.
+2. **Mois 2** : visites de terrain des sites de permaculture et des secteurs à végétaliser ; première séance du conseil local « Une seule santé » sur la base des sujets identifiés.
+3. **Mois 3** : rapport sur la qualité de l'air intérieur ; tableau de suivi du « Croissy d'Après » complété (statut, élu référent, échéance) et présenté en comité de direction.

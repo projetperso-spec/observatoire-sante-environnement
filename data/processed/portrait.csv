@@ -1,0 +1,8 @@
+"code_iris","nom_iris","echelle","population","part_0_2_ans","part_0_14_ans","part_65_ans_plus","part_75_ans_plus","part_80_ans_plus","part_cadres","part_employes_ouvriers","part_retraites","revenu_median","taux_pauvrete","rapport_interdecile","part_prestations_soc"
+"781900101","Plaine des Courlis","IRIS",2695.5,3.9,22.6,9.3,4.3,2.3,24.5,23.2,12.7,33440,9,5.1,2.3
+"781900102","Ouest","IRIS",2244.3,1.2,21.5,20,7.1,4.7,38.3,6.2,25.6,46130,3,4.6,0.8
+"781900103","Centre Ville","IRIS",3307.2,3.5,16.5,20.7,9.4,5.4,31.3,11.6,26.2,34700,7,4.4,2
+"781900104","Vieux Croissy","IRIS",2333,2.5,16.3,26.1,16.4,11.6,31.6,9.9,29.5,45060,3,5,0.8
+"78190","Croissy-sur-Seine","Commune",10580,2.9,19.1,18.9,9.2,5.8,31.1,13,23.4,NA,NA,NA,NA
+"78","Département (78)","Département",1470778,3.6,20,16.7,8.1,4.9,21.3,21.2,22.1,NA,NA,NA,NA
+"FR","France","France",67760573,3.1,17.3,20.8,9.8,6.1,10.7,26.9,27.8,NA,NA,NA,NA
