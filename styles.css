@@ -34,6 +34,19 @@
 }
 .cle-quartiers .pastille-quartier { width: 18px; height: 18px; line-height: 18px; font-size: 11px; margin-right: 4px; }
 
+/* Téléphone : les deux coins du bas se chevauchent. On remonte le coin bas-gauche
+   (encadré des quartiers) en haut, à droite des boutons de zoom, et on réduit les légendes. */
+@media (max-width: 767.98px) {
+  .leaflet-bottom.leaflet-left { top: 0; bottom: auto; left: 44px; }
+  .leaflet-bottom.leaflet-left .leaflet-control { margin-top: 10px; margin-bottom: 0; }
+  .cle-quartiers { font-size: 11px; line-height: 1.6; padding: 4px 7px; }
+  .cle-quartiers .pastille-quartier { width: 15px; height: 15px; line-height: 15px; font-size: 10px; }
+  .leaflet .info.legend { font-size: 10px; line-height: 14px; padding: 4px 6px; }
+  .leaflet .info.legend i { width: 12px; height: 12px; }
+  /* Les légendes en dégradé ont une hauteur fixée en ligne par leaflet : on les réduit d'un quart. */
+  .leaflet-bottom.leaflet-right .info.legend { transform: scale(0.75); transform-origin: bottom right; }
+}
+
 /* Barre de navigation : 12 pages sur une seule ligne dès 1200 px de large. */
 @media (min-width: 992px) {
   .navbar .nav-link { white-space: nowrap; font-size: 0.86rem; padding-left: 0.45rem !important; padding-right: 0.45rem !important; }
